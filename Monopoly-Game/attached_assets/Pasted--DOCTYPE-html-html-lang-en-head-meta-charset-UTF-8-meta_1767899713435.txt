@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monopoly AI & Player</title>
+<style>
+body { background:#0f5132; font-family:system-ui,sans-serif; margin:0; padding:10px; color:white; }
+#container { max-width:500px; margin:auto; }
+#board { position:relative; width:100%; aspect-ratio:1; background:#f8f9fa; border:6px solid #222; display:grid; grid-template-columns:repeat(11,1fr); grid-template-rows:repeat(11,1fr);}
+.tile { border:1px solid #333; font-size:9px; padding:2px; background:#fff; color:#000; position:relative; }
+.color-bar { height:6px; }
+.token { width:14px; height:14px; border-radius:50%; position:absolute; transition:.25s ease-in-out; }
+.you{background:red}.ai1{background:blue}.ai2{background:green}
+.panel { background:#222; padding:10px; border-radius:10px; margin-top:8px; }
+button { width:100%; padding:12px; font-size:16px; border:none; border-radius:8px; background:#ffc107; margin-top:4px; }
+#dice { display:flex; justify-content:center; gap:10px; margin:10px 0; }
+.die { width:44px; height:44px; border-radius:8px; background:white; color:black; font-size:26px; display:flex; align-items:center; justify-content:center; }
+small{opacity:.8; font-size:10px;}
+</style>
+</head>
+<body>
+<div id="container">
+<h2 style="text-align:center">🎲 Monopoly AI & Player</h2>
+<div id="board"></div>
+<div id="dice">
+  <div class="die" id="die1">🎲</div>
+  <div class="die" id="die2">🎲</div>
+</div>
+<button id="rollBtn" onclick="rollDice()">Roll Dice</button>
+<div class="panel" id="status"></div>
+
+<div class="panel" id="propertyPanel" style="display:none;">
+  <h3 id="propertyName"></h3>
+  <p id="propertyPrice"></p>
+  <button onclick="buyProperty()">Buy Property</button>
+  <button onclick="skipProperty()">Skip</button>
+</div>
+
+<div class="panel" id="housePanel" style="display:none;">
+  <h3 id="housePropertyName"></h3>
+  <p id="housePropertyInfo"></p>
+  <button onclick="buyHouse()">Buy House (+$50)</button>
+  <button onclick="buyHotel()">Buy Hotel (+$250)</button>
+  <button onclick="closeHousePanel()">Done</button>
+</div>
+</div>
+
+<script>
+// ===== Board & Tiles =====
+const tiles=[
+ {n:"GO"},{n:"Mediterranean",c:"brown",price:60,r:[2,10,30,90,160,250]},{n:"Chest"},{n:"Baltic",c:"brown",price:60,r:[4,20,60,180,320,450]},{n:"Income Tax"},{n:"Reading Railroad"},
+ {n:"Oriental",c:"lightblue",price:100,r:[6,30,90,270,400,550]},{n:"Chance"},{n:"Vermont",c:"lightblue",price:100,r:[6,30,90,270,400,550]},{n:"Connecticut",c:"lightblue",price:120,r:[8,40,100,300,450,600]},
+ {n:"Jail"},{n:"St Charles",c:"pink",price:140,r:[10,50,150,450,625,750]},{n:"Electric Company"},{n:"States",c:"pink",price:140,r:[10,50,150,450,625,750]},{n:"Virginia",c:"pink",price:160,r:[12,60,180,500,700,900]},
+ {n:"Pennsylvania Railroad"},{n:"St James",c:"orange",price:180,r:[14,70,200,550,750,950]},{n:"Chest"},{n:"Tennessee",c:"orange",price:180,r:[14,70,200,550,750,950]},{n:"New York",c:"orange",price:200,r:[16,80,220,600,800,1000]},
+ {n:"Free Parking"},{n:"Kentucky",c:"red",price:220,r:[18,90,250,700,875,1050]},{n:"Chance"},{n:"Indiana",c:"red",price:220,r:[18,90,250,700,875,1050]},{n:"Illinois",c:"red",price:240,r:[20,100,300,750,925,1100]},
+ {n:"B&O Railroad"},{n:"Atlantic",c:"yellow",price:260,r:[22,110,330,800,975,1150]},{n:"Ventnor",c:"yellow",price:260,r:[22,110,330,800,975,1150]},{n:"Water Works"},{n:"Marvin Gardens",c:"yellow",price:280,r:[24,120,360,850,1025,1200]},
+ {n:"Go To Jail"},{n:"Pacific",c:"green",price:300,r:[26,130,390,900,1100,1275]},{n:"North Carolina",c:"green",price:300,r:[26,130,390,900,1100,1275]},{n:"Chest"},{n:"Pennsylvania Ave",c:"green",price:320,r:[28,150,450,1000,1200,1400]},
+ {n:"Short Line"},{n:"Chance"},{n:"Park Place",c:"blue",price:350,r:[35,175,500,1100,1300,1500]},{n:"Luxury Tax"},{n:"Boardwalk",c:"blue",price:400,r:[50,200,600,1400,1700,2000]}
+];
+
+const board=document.getElementById("board");
+const tileEls=[];
+function path(i){if(i<=10)return [10-i,10];if(i<=20)return [0,20-i];if(i<=30)return [i-20,0];return [10,i-30];}
+tiles.forEach((t,i)=>{
+  const d=document.createElement("div"); d.className="tile";
+  const [x,y]=path(i); d.style.gridColumn=x+1; d.style.gridRow=y+1;
+  if(t.c)d.innerHTML=`<div class="color-bar" style="background:${t.c}"></div>`;
+  d.innerHTML+=`<div>${t.n}${t.price?' - $'+t.price:''}</div>`;
+  board.appendChild(d); tileEls.push(d);
+});
+
+// ===== Players =====
+const players=[
+ {name:"You",money:1500,pos:0,cls:"you"},
+ {name:"AI 1",money:1500,pos:0,cls:"ai1"},
+ {name:"AI 2",money:1500,pos:0,cls:"ai2"}
+];
+players.forEach(p=>{p.el=document.createElement("div");p.el.className="token "+p.cls;board.appendChild(p.el);});
+
+// ===== Properties =====
+const props=Array(40).fill(null).map(()=>({owner:null,houses:0,mort:false}));
+
+// ===== Game State =====
+let turn=0,waitingProperty=false,currentProperty=null;
+let waitingHouse=false,currentHouse=null;
+
+// ===== Dice =====
+function rollDice(){
+  if(waitingProperty || waitingHouse) return;
+  const d1El=document.getElementById("die1");
+  const d2El=document.getElementById("die2");
+  let rolls=10;
+  const interval=setInterval(()=>{
+    d1El.textContent=Math.ceil(Math.random()*6);
+    d2El.textContent=Math.ceil(Math.random()*6);
+    if(--rolls===0){
+      clearInterval(interval);
+      const d1=Math.ceil(Math.random()*6);
+      const d2=Math.ceil(Math.random()*6);
+      d1El.textContent=d1; d2El.textContent=d2;
+      animateMove(d1+d2);
+    }
+  },50);
+}
+
+// ===== Token movement =====
+function animateMove(steps){
+  const p=players[turn]; let step=0;
+  function moveStep(){
+    if(step>=steps){resolveTile();return;}
+    p.pos=(p.pos+1)%40;
+    const [x,y]=path(p.pos);
+    const tileSize=100/11; const tokenOffset=14/2;
+    p.el.style.left=`calc(${x*tileSize+tileSize/2}% - ${tokenOffset}px)`;
+    p.el.style.top=`calc(${y*tileSize+tileSize/2}% - ${tokenOffset}px)`;
+    step++; setTimeout(moveStep,200);
+  } moveStep();
+}
+
+// ===== Monopoly check =====
+function monopoly(owner,color){return tiles.map((t,i)=>t.c===color?i:null).filter(i=>i!==null).every(i=>props[i].owner===owner);}
+
+// ===== Tile resolve =====
+function resolveTile(){
+  const p=players[turn]; const t=tiles[p.pos]; const pr=props[p.pos];
+
+  // Unowned property
+  if(t.c && pr.owner===null && p.money>=t.price){
+    if(turn===0){
+      currentProperty=pr;
+      document.getElementById("propertyName").innerText=t.n;
+      document.getElementById("propertyPrice").innerText=`Price: $${t.price}`;
+      document.getElementById("propertyPanel").style.display="block"; waitingProperty=true;
+    }else{ // AI
+      if(p.money>t.price*1.2){pr.owner=turn;p.money-=t.price;}
+      nextTurn();
+    }
+  }
+  // Owned property
+  else if(pr.owner===turn && t.c){
+    if(turn===0){
+      currentHouse=pr;
+      document.getElementById("housePropertyName").innerText=t.n;
+      updateHousePanel();
+      document.getElementById("housePanel").style.display="block";
+      waitingHouse=true;
+    } else aiHouse(pr,p);
+  }
+  // Pay rent
+  else if(pr.owner!==null && pr.owner!==turn && !pr.mort){
+    let rent=pr.houses>0?t.r[pr.houses]:monopoly(pr.owner,t.c)?t.r[0]*2:t.r[0];
+    p.money-=rent; players[pr.owner].money+=rent; nextTurn();
+  }
+  else nextTurn();
+  updateUI();
+}
+
+// ===== Property panel =====
+function buyProperty(){const p=players[turn];if(currentProperty){currentProperty.owner=turn;p.money-=tiles[p.pos].price;currentProperty=null;waitingProperty=false;document.getElementById("propertyPanel").style.display="none";nextTurn();}}
+function skipProperty(){currentProperty=null;waitingProperty=false;document.getElementById("propertyPanel").style.display="none";nextTurn();}
+
+// ===== House panel =====
+function updateHousePanel(){const pr=currentHouse;const p=players[turn];let txt=`Houses: ${pr.houses}`; if(pr.houses>=4) txt+=' (hotel possible)'; document.getElementById("housePropertyInfo").innerText=txt+`\nMoney: $${p.money}`;}
+function buyHouse(){const pr=currentHouse;const p=players[turn];if(pr.houses<4 && p.money>=50){pr.houses++;p.money-=50;updateHousePanel();updateUI();}}
+function buyHotel(){const pr=currentHouse;const p=players[turn];if(pr.houses>=4 && p.money>=250){pr.houses=5;p.money-=250;updateHousePanel();updateUI();}}
+function closeHousePanel(){currentHouse=null;waitingHouse=false;document.getElementById("housePanel").style.display="none";nextTurn();}
+
+// ===== AI House =====
+function aiHouse(pr,p){if(monopoly(turn,tiles[p.pos].c)){if(pr.houses<4 && p.money>=50){pr.houses++;p.money-=50;}else if(pr.houses>=4 && p.money>=250){pr.houses=5;p.money-=250;}} nextTurn();}
+
+// ===== Turn & UI =====
+function nextTurn(){turn=(turn+1)%players.length; updateUI(); if(turn!==0){setTimeout(rollDice,500);}}
+function updateUI(){document.getElementById("status").innerHTML=players.map(p=>`${p.name}: $${p.money}`).join("<br>"); tileEls.forEach((d,i)=>{const p=props[i]; d.innerHTML=(tiles[i].c?`<div class="color-bar" style="background:${tiles[i].c}"></div>`:"")+tiles[i].n+(tiles[i].price?' - $'+tiles[i].price:'')+(p.owner!==null?`<br><small>${players[p.owner].name}</small>`:"")+(p.houses>0?`<br>${p.houses===5?'🏨':'🏠'.repeat(p.houses)}`:"");});}
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Kabel:wght@400;700&family=Aleo:ital,wght@0,300;0,400;0,700;1,400&family=Oswald:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 146 65% 15%; /* Deep Felt Green #0f5132 */
+  --foreground: 60 30% 96%; /* Off-white card stock */
+  
+  --card: 45 20% 94%;
+  --card-foreground: 222 47% 11%;
+  
+  --popover: 45 20% 94%;
+  --popover-foreground: 222 47% 11%;
+  
+  --primary: 43 96% 58%; /* Gold/Yellow for highlights */
+  --primary-foreground: 20 14% 4%;
+  
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 222 47% 11%;
+  
+  --muted: 145 60% 12%;
+  --muted-foreground: 145 30% 70%;
+  
+  --accent: 340 82% 52%; /* Hotel Red */
+  --accent-foreground: 210 40% 98%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 145 30% 25%;
+  --input: 145 30% 25%;
+  --ring: 43 96% 58%;
+  
+  --radius: 0.5rem;
+
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Aleo', serif;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-medium uppercase tracking-wide;
+  }
+}
+
+@layer utilities {
+  .board-grid {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    grid-template-rows: repeat(11, 1fr);
+    aspect-ratio: 1/1;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    border: 8px solid #000;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    background: #d4eec9; /* Center board color */
+  }
+
+  .text-shadow {
+    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+  }
+  
+  .text-shadow-lg {
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.4);
+}
